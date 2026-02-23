@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>7-Truck Fleet · Real Time Tracking (Web style)</title>
-    <!-- Font Awesome 6 (truck, icons) - kept for other icons, but truck uses emoji -->
+    <title>7‑Truck Fleet · Real Time Tracking (web style)</title>
+    <!-- Font Awesome 6 (icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Leaflet (open street map) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -71,12 +71,13 @@
             margin-right: 8px;
             color: #22c55e;
         }
-        /* map container – larger for web */
+        /* map container – larger for web, interactive zoom */
         #fleetMap {
             width: 100%;
             height: 460px;
             background: #cbd5e1;
             z-index: 1;
+            cursor: grab;
         }
         /* bottom panel – 7 trucks cards row */
         .trucks-panel {
@@ -88,6 +89,7 @@
             align-items: center;
             gap: 14px;
             margin-bottom: 22px;
+            flex-wrap: wrap;
         }
         .section-label h2 {
             font-size: 20px;
@@ -115,7 +117,7 @@
             gap: 18px;
             margin: 18px 0 20px 0;
         }
-        /* individual truck card (smaller size & half-size truck icon inside) */
+        /* individual truck card */
         .truck-card {
             background: white;
             border-radius: 24px;
@@ -135,18 +137,34 @@
             align-items: center;
             gap: 12px;
         }
-        /* truck icon size reduced to HALF of previous (truck-icon-box was 44px, now 22px) */
-        .truck-icon-mini {
+        /* truck emoji container — displays the truck number inside */
+        .truck-icon-with-number {
             background: #13293b;
-            width: 22px;
-            height: 22px;
-            border-radius: 11px;
+            width: 36px;          /* slightly larger to fit number + emoji clearly */
+            height: 36px;
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 17px;       /* emoji size */
+            font-weight: 700;
             box-shadow: 0 2.5px 6px rgba(0,35,65,0.3);
+            color: #fdba74;        /* default forward color */
+            transition: transform 0.2s ease;
+            line-height: 1;
+            gap: 2px;
         }
+        /* number inside the emoji: we put the plate as a small superscript or inline */
+        .truck-icon-with-number span {
+            font-size: 11px;
+            font-weight: 800;
+            margin-left: 2px;
+            color: white;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 0px 4px;
+        }
+
         .truck-info {
             flex: 1;
         }
@@ -160,6 +178,7 @@
             color: #4f6f87;
             font-weight: 500;
             margin-top: 2px;
+            display: none;          /* hide original plate, we show inside icon */
         }
         .live-indicator {
             background: #f97316;
@@ -220,13 +239,14 @@
             margin-top: 8px;
             border: 1px solid #c9ddef;
         }
-        /* simulation button and footer */
+        /* action bar */
         .action-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-top: 12px;
             flex-wrap: wrap;
+            gap: 16px;
         }
         .btn-sim {
             background: white;
@@ -255,16 +275,20 @@
             color: #f97316;
             margin-right: 6px;
         }
-        /* make grid responsive for smaller web windows */
-        @media (max-width: 1000px) {
-            .truck-fleet-grid {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            }
+        /* footnote */
+        .footnote {
+            margin-top: 24px; color: #5b7992; font-size: 14px; max-width: 1300px; text-align: left; width: 100%;
         }
-        @media (max-width: 700px) {
-            .truck-fleet-grid {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            }
+        /* map zoom hint */
+        .zoom-hint {
+            background: #ffffffcc;
+            backdrop-filter: blur(4px);
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            border: 1px solid white;
         }
     </style>
 </head>
@@ -274,118 +298,34 @@
         <div class="dashboard-header">
             <div class="title-section">
                 <h1><i class="fas fa-truck-fast" style="color:#f97316; margin-right: 12px;"></i>Live fleet · 7 trucks</h1>
-                <p>Real-time position along NH-48 · Gurgaon ↔ Faridabad corridor (with opposite direction)</p>
+                <p>Real-time position along NH-48 · Gurgaon ↔ Faridabad corridor (opposite directions)</p>
             </div>
             <div class="live-badge-global">
                 <i class="fas fa-circle"></i> 7 vehicles active
             </div>
         </div>
-        <!-- map container -->
+        <!-- map container with zoom control (full interactive) -->
         <div id="fleetMap"></div>
-        <!-- bottom truck cards (7 trucks, half-size icons) -->
+        <!-- bottom truck cards (7 trucks) -->
         <div class="trucks-panel">
             <div class="section-label">
                 <h2><span style="margin-right: 10px; color:#f97316;">🚚</span> Each truck moving (real time simulation)</h2>
                 <div class="fleet-stats">
                     <span class="stat-chip"><i class="far fa-clock"></i> ETA 8–22 min</span>
                     <span class="stat-chip"><i class="fas fa-rotate"></i> refresh 3s</span>
+                    <span class="stat-chip zoom-hint"><i class="fas fa-search-plus"></i> scroll to zoom map</span>
                 </div>
             </div>
-            <!-- grid of 7 truck cards, with HALF SIZE icons (smaller trucks) -->
+
+            <!-- grid of 7 truck cards, with truck number displayed INSIDE the emoji -->
             <div class="truck-fleet-grid" id="truckCardContainer">
-                <!-- Truck 1 (forward) -->
-                <div class="truck-card" id="card0">
-                    <div class="card-row">
-                        <span class="truck-icon-mini">🚚</span>
-                        <div class="truck-info">
-                            <h4>Gurjit S.</h4>
-                            <span class="plate">HR-55-GB-9712</span>
-                        </div>
-                    </div>
-                    <div class="live-indicator"><span class="pulse-dot-white"></span> EN ROUTE</div>
-                    <div class="status-move"><i class="fas fa-location-dot"></i> <span id="truck0Street">Kherki Daula</span></div>
-                    <span class="street-badge" id="truck0Eta">ETA 14 min</span>
-                </div>
-                <!-- Truck 2 (forward) -->
-                <div class="truck-card" id="card1">
-                    <div class="card-row">
-                        <span class="truck-icon-mini">🚚</span>
-                        <div class="truck-info">
-                            <h4>Harpreet</h4>
-                            <span class="plate">DL-1T-4432</span>
-                        </div>
-                    </div>
-                    <div class="live-indicator"><span class="pulse-dot-white"></span> EN ROUTE</div>
-                    <div class="status-move"><i class="fas fa-location-dot"></i> <span id="truck1Street">IFFCO Chowk</span></div>
-                    <span class="street-badge" id="truck1Eta">ETA 18 min</span>
-                </div>
-                <!-- Truck 3 (forward) -->
-                <div class="truck-card" id="card2">
-                    <div class="card-row">
-                        <span class="truck-icon-mini">🚚</span>
-                        <div class="truck-info">
-                            <h4>Ramesh</h4>
-                            <span class="plate">HR-26-AB-1289</span>
-                        </div>
-                    </div>
-                    <div class="live-indicator"><span class="pulse-dot-white"></span> EN ROUTE</div>
-                    <div class="status-move"><i class="fas fa-location-dot"></i> <span id="truck2Street">Subhash Chowk</span></div>
-                    <span class="street-badge" id="truck2Eta">ETA 12 min</span>
-                </div>
-                <!-- Truck 4 (forward) -->
-                <div class="truck-card" id="card3">
-                    <div class="card-row">
-                        <span class="truck-icon-mini">🚚</span>
-                        <div class="truck-info">
-                            <h4>Sukhvinder</h4>
-                            <span class="plate">HR-55-AA-5634</span>
-                        </div>
-                    </div>
-                    <div class="live-indicator"><span class="pulse-dot-white"></span> EN ROUTE</div>
-                    <div class="status-move"><i class="fas fa-location-dot"></i> <span id="truck3Street">Bajghera</span></div>
-                    <span class="street-badge" id="truck3Eta">ETA 22 min</span>
-                </div>
-                <!-- Truck 5 (backward) -->
-                <div class="truck-card" id="card4">
-                    <div class="card-row">
-                        <span class="truck-icon-mini">🚚</span>
-                        <div class="truck-info">
-                            <h4>Amrit</h4>
-                            <span class="plate">UP-14-T-7890</span>
-                        </div>
-                    </div>
-                    <div class="live-indicator"><span class="pulse-dot-white"></span> EN ROUTE</div>
-                    <div class="status-move"><i class="fas fa-location-dot"></i> <span id="truck4Street">Kapashera</span></div>
-                    <span class="street-badge" id="truck4Eta">ETA 10 min</span>
-                </div>
-                <!-- Truck 6 (backward) -->
-                <div class="truck-card" id="card5">
-                    <div class="card-row">
-                        <span class="truck-icon-mini">🚚</span>
-                        <div class="truck-info">
-                            <h4>Manpreet K.</h4>
-                            <span class="plate">HR-38-XY-4567</span>
-                        </div>
-                    </div>
-                    <div class="live-indicator"><span class="pulse-dot-white"></span> EN ROUTE</div>
-                    <div class="status-move"><i class="fas fa-location-dot"></i> <span id="truck5Street">Neharpar</span></div>
-                    <span class="street-badge" id="truck5Eta">ETA 8 min</span>
-                </div>
-                <!-- Truck 7 (backward) -->
-                <div class="truck-card" id="card6">
-                    <div class="card-row">
-                        <span class="truck-icon-mini">🚚</span>
-                        <div class="truck-info">
-                            <h4>Vijay P.</h4>
-                            <span class="plate">DL-8C-AB-1234</span>
-                        </div>
-                    </div>
-                    <div class="live-indicator"><span class="pulse-dot-white"></span> EN ROUTE</div>
-                    <div class="status-move"><i class="fas fa-location-dot"></i> <span id="truck6Street">Sector 37</span></div>
-                    <span class="street-badge" id="truck6Eta">ETA 5 min</span>
-                </div>
+                <!-- Truck cards will be populated dynamically to sync numbers, but we build static with correct numbers inside .truck-icon-with-number -->
+                <!-- We'll generate via JS to keep it clean but also ensure numbers. But for simplicity we build static placeholders and update via JS, but we want number inside from start. Let's write static with correct IDs -->
             </div>
-            <!-- footer + simulation button (web style) -->
+            <!-- we dynamically fill cards using JS to guarantee numbers match vehicle plates. For clarity, we generate cards in JS -->
+            <div id="dynamicCardGrid" class="truck-fleet-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));"></div>
+
+            <!-- footer + simulation button -->
             <div class="action-bar">
                 <div class="timestamp-footer">
                     <i class="fas fa-satellite-dish"></i> last update: <span id="globalTimestamp">just now</span>
@@ -396,27 +336,32 @@
             </div>
         </div>
     </div>
+
+    <div class="footnote">
+        <i class="fas fa-map-pin"></i> Seven trucks moving simultaneously · <strong>Truck number shown inside each emoji</strong> · 4 forward (orange), 3 backward (blue) · Sharp curves on route · Continuous come & go · Full map zoom available (scroll/pinch).
+    </div>
+
     <script>
         (function() {
-            // ---------- WEB FLEET CONFIG: 7 TRUCKS, SMALLER ICON SIZE (half), WITH 3-4 SHARP CURVES, CONTINUOUS COME AND GO ----------
-            // Expanded route with more points to create 3-4 sharp curves (simulating bends in NH-48)
+            // ------------------ CONFIG ------------------
+            // route with sharp curves (NH-48 style)
             const routePoints = [
                 { lat: 28.4601, lng: 77.0264, name: 'Sector 14, Gurgaon' },
-                { lat: 28.4585, lng: 77.0320, name: 'Rajiv Chowk Curve Start' }, // Curve 1 start
+                { lat: 28.4585, lng: 77.0320, name: 'Rajiv Chowk Curve Start' },
                 { lat: 28.4562, lng: 77.0356, name: 'Rajiv Chowk' },
-                { lat: 28.4520, lng: 77.0420, name: 'Curve Bend 1' }, // Curve 1 bend
+                { lat: 28.4520, lng: 77.0420, name: 'Curve Bend 1' },
                 { lat: 28.4505, lng: 77.0512, name: 'Signature Tower' },
-                { lat: 28.4480, lng: 77.0600, name: 'IFFCO Approach' }, // Curve 2 start
+                { lat: 28.4480, lng: 77.0600, name: 'IFFCO Approach' },
                 { lat: 28.4442, lng: 77.0694, name: 'IFFCO Chowk' },
-                { lat: 28.4400, lng: 77.0780, name: 'Curve Bend 2' }, // Curve 2 bend
+                { lat: 28.4400, lng: 77.0780, name: 'Curve Bend 2' },
                 { lat: 28.4390, lng: 77.0750, name: 'Large Curve 2 South' },
                 { lat: 28.4370, lng: 77.0780, name: 'Large Curve 2 Mid' },
                 { lat: 28.4360, lng: 77.0820, name: 'Large Curve 2 East' },
                 { lat: 28.4364, lng: 77.0860, name: 'Subhash Chowk' },
-                { lat: 28.4330, lng: 77.0800, name: 'Sharp Curve 4' }, // Added sharp curve 4 (west deviation for sharpness)
-                { lat: 28.4300, lng: 77.0950, name: 'Kherki Approach' }, // Curve 3 start
+                { lat: 28.4330, lng: 77.0800, name: 'Sharp Curve 4' },
+                { lat: 28.4300, lng: 77.0950, name: 'Kherki Approach' },
                 { lat: 28.4253, lng: 77.1042, name: 'Kherki Daula toll' },
-                { lat: 28.4200, lng: 77.1200, name: 'Curve Bend 3' }, // Curve 3 bend
+                { lat: 28.4200, lng: 77.1200, name: 'Curve Bend 3' },
                 { lat: 28.4190, lng: 77.1170, name: 'Large Curve 3 West' },
                 { lat: 28.4170, lng: 77.1200, name: 'Large Curve 3 Mid' },
                 { lat: 28.4160, lng: 77.1300, name: 'Large Curve 3 East' },
@@ -431,156 +376,221 @@
                 { lat: 28.4085, lng: 77.3158, name: 'Sector 37, Faridabad' },
                 { lat: 28.4085, lng: 77.3668, name: '5km Extension End' }
             ];
-            // Directions: Trucks 0-3 forward, 4-6 backward initially
-            const forwardTrucks = [0, 1, 2, 3];
-            const backwardTrucks = [4, 5, 6];
-            // Initial indices: forward start near beginning, backward near end (spread out)
-            let truckIndices = [2, 4, 6, 8, routePoints.length - 3, routePoints.length - 5, routePoints.length - 7];
-            let truckDirections = [1, 1, 1, 1, -1, -1, -1];
-            let truckProgress = Array(7).fill(0);
+
+            // Vehicle plates (these are the truck numbers shown inside emoji)
+            const vehicleNumbers = ['95', '97', '80', '81', '51', '52', '927'];
             const totalTrucks = 7;
-            const truckMarkers = [];
-            let map, interval;
-            const stepTime = 3200; // ms per segment
-            const tickTime = 50; // ms per update for smooth animation
+            const forwardTrucks = [0, 1, 2, 3];    // indices 0-3 forward
+            const backwardTrucks = [4, 5, 6];       // 4-6 backward
+
+            // initial indices (spread)
+            let truckIndices = [2, 4, 6, 8, routePoints.length - 3, routePoints.length - 5, routePoints.length - 7];
+            let truckDirections = [1, 1, 1, 1, -1, -1, -1]; // 1 = forward, -1 = backward
+            let truckProgress = Array(7).fill(0);
+
+            // simulation timing
+            const stepTime = 3200;   // ms per segment
+            const tickTime = 50;      // smooth update
             const stepPerTick = tickTime / stepTime;
-            // Custom small truck icon using real truck emoji (🚚), half size (~19px)
-            function createSmallTruckIcon(direction = 'forward') {
-                const color = direction === 'forward' ? '#fdba74' : '#74b9ff'; // Different color for opposite to distinguish
-                const rotation = direction === 'forward' ? '0' : '180';
+
+            let map;
+            let interval = null;
+            const truckMarkers = [];
+
+            // ---------- Helper: create custom icon with truck emoji + number inside ----------
+            function createTruckIconWithNumber(plate, direction = 'forward') {
+                const color = direction === 'forward' ? '#fdba74' : '#74b9ff'; // orange / blue
+                const rotation = direction === 'forward' ? '0deg' : '180deg';
+                // emoji plus small plate background
+                const html = `<div style="background:#13293b; width:36px; height:36px; border-radius:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 7px rgba(0,30,50,0.8); border:1.5px solid white; color:${color}; font-size:20px; transform: rotate(${rotation}); gap: 2px; line-height:1;">🚚<span style="font-size:11px; font-weight:800; background:rgba(0,0,0,0.5); color:white; border-radius:12px; padding:1px 5px; margin-left:2px;">${plate}</span></div>`;
                 return L.divIcon({
-                    html: `<div style="background:#13293b; width:19px; height:19px; border-radius: 9px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 7px rgba(0,30,50,0.6); border:1.25px solid white; color:${color}; font-size:10px; transform: rotate(${rotation}deg);">🚚</div>`,
-                    className: 'small-truck-marker',
-                    iconSize: [19, 19],
-                    iconAnchor: [10, 10],
-                    popupAnchor: [0, -10]
+                    html: html,
+                    className: 'truck-icon-unit',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18],
+                    popupAnchor: [0, -18]
                 });
             }
-            // Init map
-            function initFleetMap() {
-                map = L.map('fleetMap').setView([28.435, 77.15], 12);
+
+            // ---------- build truck cards dynamically (so numbers are inside emoji) ----------
+            const gridContainer = document.getElementById('dynamicCardGrid');
+            function buildTruckCards() {
+                let htmlStr = '';
+                for (let i = 0; i < totalTrucks; i++) {
+                    const plate = vehicleNumbers[i];
+                    const dir = truckDirections[i] > 0 ? 'forward' : 'backward';
+                    const dirColor = dir === 'forward' ? '#fdba74' : '#74b9ff';
+                    const rotate = dir === 'forward' ? 'rotate(0deg)' : 'rotate(180deg)';
+                    htmlStr += `
+                        <div class="truck-card" id="card${i}">
+                            <div class="card-row">
+                                <span class="truck-icon-with-number" id="iconCard${i}" style="color:${dirColor}; transform:${rotate};">🚚<span>${plate}</span></span>
+                                <div class="truck-info">
+                                    <h4>Driver ${String.fromCharCode(65 + i)}</h4>
+                                    <span class="plate">${plate}</span>
+                                </div>
+                            </div>
+                            <div class="live-indicator"><span class="pulse-dot-white"></span> EN ROUTE</div>
+                            <div class="status-move"><i class="fas fa-location-dot"></i> <span id="truck${i}Street">${routePoints[truckIndices[i]].name}</span></div>
+                            <span class="street-badge" id="truck${i}Eta">ETA -- min</span>
+                        </div>
+                    `;
+                }
+                gridContainer.innerHTML = htmlStr;
+            }
+            buildTruckCards();
+
+            // ---------- map initialization ----------
+            function initMap() {
+                map = L.map('fleetMap', {
+                    zoomControl: true,
+                    scrollWheelZoom: true,
+                    doubleClickZoom: true,
+                    dragging: true
+                }).setView([28.435, 77.15], 12);
+
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                     attribution: '© OpenStreetMap, CartoDB'
                 }).addTo(map);
-                // Background route line with curves
+
+                // background route line
                 L.polyline(routePoints.map(p => [p.lat, p.lng]), {
                     color: '#f97316',
                     weight: 4,
                     opacity: 0.6,
                     dashArray: '6, 8'
                 }).addTo(map);
-                // Add origin / destination markers
+
+                // start/end markers
                 L.marker([routePoints[0].lat, routePoints[0].lng], {
                     icon: L.divIcon({ html: '<i class="fas fa-circle" style="color:#2ecc71; font-size:22px; text-shadow:0 2px 5px black;"></i>', iconSize: [22,22] })
                 }).addTo(map).bindTooltip('Gurgaon start');
                 L.marker([routePoints[routePoints.length-1].lat, routePoints[routePoints.length-1].lng], {
                     icon: L.divIcon({ html: '<i class="fas fa-flag-checkered" style="color:#e74c3c; font-size:28px;"></i>', iconSize: [28,28] })
                 }).addTo(map).bindTooltip('Faridabad Extension');
-                // Create 7 truck markers (small emoji icon), with initial direction
+
+                // create 7 markers with correct numbers
                 for (let i = 0; i < totalTrucks; i++) {
                     const idx = truckIndices[i];
                     const pos = routePoints[idx];
-                    const initDir = forwardTrucks.includes(i) ? 'forward' : 'backward';
+                    const dir = truckDirections[i] > 0 ? 'forward' : 'backward';
                     const marker = L.marker([pos.lat, pos.lng], {
-                        icon: createSmallTruckIcon(initDir)
+                        icon: createTruckIconWithNumber(vehicleNumbers[i], dir)
                     }).addTo(map);
-                    marker.bindTooltip(`Truck ${i+1} · ${pos.name} (${initDir})`, { direction: 'top' });
+                    marker.bindTooltip(`Truck ${vehicleNumbers[i]} · ${pos.name} (${dir})`, { direction: 'top' });
                     truckMarkers.push(marker);
                 }
-                // Fit bounds to corridor
-                const bounds = L.latLngBounds([routePoints[0], routePoints[routePoints.length-1]]);
+
+                // fit bounds to show full corridor with padding
+                const bounds = L.latLngBounds(routePoints.map(p => [p.lat, p.lng]));
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
-            // Move all trucks smoothly (continuous animation, reverse at ends for come and go)
+
+            // ---------- smooth movement and reversal (come & go) ----------
             function moveAllTrucks() {
                 const len = routePoints.length;
                 for (let t = 0; t < totalTrucks; t++) {
                     let dir = truckDirections[t];
                     let startIdx = truckIndices[t];
                     let prog = truckProgress[t] + stepPerTick;
-                    if (prog >= 1) {
-                        prog -= 1;
+
+                    if (prog >= 1.0) {
+                        prog = 0.0;
                         startIdx += dir;
-                        if (startIdx >= len) {
+
+                        // reverse logic at ends
+                        if (startIdx >= len - 1 && dir === 1) {
                             startIdx = len - 1;
                             dir = -1;
                             truckDirections[t] = dir;
-                            truckMarkers[t].setIcon(createSmallTruckIcon('backward'));
-                            const iconElem = document.getElementById(`card${t}`).querySelector('.truck-icon-mini');
-                            iconElem.style.color = '#74b9ff';
-                            iconElem.style.transform = 'rotate(180deg)';
-                        } else if (startIdx < 0) {
+                            // update icon direction
+                            truckMarkers[t].setIcon(createTruckIconWithNumber(vehicleNumbers[t], 'backward'));
+                            // update card icon
+                            const cardIcon = document.getElementById(`iconCard${t}`);
+                            if (cardIcon) {
+                                cardIcon.style.color = '#74b9ff';
+                                cardIcon.style.transform = 'rotate(180deg)';
+                            }
+                        } else if (startIdx <= 0 && dir === -1) {
                             startIdx = 0;
                             dir = 1;
                             truckDirections[t] = dir;
-                            truckMarkers[t].setIcon(createSmallTruckIcon('forward'));
-                            const iconElem = document.getElementById(`card${t}`).querySelector('.truck-icon-mini');
-                            iconElem.style.color = '#fdba74';
-                            iconElem.style.transform = 'rotate(0deg)';
+                            truckMarkers[t].setIcon(createTruckIconWithNumber(vehicleNumbers[t], 'forward'));
+                            const cardIcon = document.getElementById(`iconCard${t}`);
+                            if (cardIcon) {
+                                cardIcon.style.color = '#fdba74';
+                                cardIcon.style.transform = 'rotate(0deg)';
+                            }
                         }
                         truckIndices[t] = startIdx;
                     }
                     truckProgress[t] = prog;
-                    // Calculate next index
+
                     let nextIdx = startIdx + dir;
-                    if (nextIdx < 0 || nextIdx >= len) {
-                        nextIdx = startIdx; // Fallback, though shouldn't happen
-                    }
+                    if (nextIdx < 0) nextIdx = 0;
+                    if (nextIdx >= len) nextIdx = len - 1;
+
                     const p1 = routePoints[startIdx];
                     const p2 = routePoints[nextIdx];
                     const lat = p1.lat + prog * (p2.lat - p1.lat);
                     const lng = p1.lng + prog * (p2.lng - p1.lng);
+
                     truckMarkers[t].setLatLng([lat, lng]);
-                    // Approx name for tooltip and card
-                    const name = prog < 0.5 ? p1.name : p2.name;
-                    truckMarkers[t].getTooltip().setContent(`Truck ${t+1} · ${name} (${dir > 0 ? 'forward' : 'backward'})`);
-                    document.getElementById(`truck${t}Street`).innerText = name;
-                    // Remaining for ETA
+
+                    // approximate current street name
+                    const currentName = prog < 0.5 ? p1.name : p2.name;
+                    truckMarkers[t].getTooltip()?.setContent(`Truck ${vehicleNumbers[t]} · ${currentName} (${dir > 0 ? 'forward' : 'backward'})`);
+
+                    // update card street
+                    const streetSpan = document.getElementById(`truck${t}Street`);
+                    if (streetSpan) streetSpan.innerText = currentName;
+
+                    // update ETA (remaining segments * factor)
                     let remaining;
                     if (dir > 0) {
-                        remaining = (len - 1 - startIdx) - prog;
+                        remaining = (len - 1 - startIdx) + (1 - prog);
                     } else {
-                        remaining = startIdx - prog;
+                        remaining = startIdx + prog;
                     }
-                    const etaVal = Math.max(2, Math.round(remaining * 1.2));
-                    document.getElementById(`truck${t}Eta`).innerText = `ETA ${etaVal} min`;
-                    // Always EN ROUTE
-                    const card = document.getElementById(`card${t}`);
-                    card.querySelector('.live-indicator').innerHTML = '<span class="pulse-dot-white"></span> EN ROUTE';
+                    const etaVal = Math.max(2, Math.round(remaining * 1.3));
+                    const etaSpan = document.getElementById(`truck${t}Eta`);
+                    if (etaSpan) etaSpan.innerText = `ETA ${etaVal} min`;
                 }
-                // Update global timestamp
-                const now = new Date();
-                document.getElementById('globalTimestamp').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                // update timestamp
+                document.getElementById('globalTimestamp').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             }
-            // Reset all trucks to initial positions (to replay)
+
+            // ---------- reset to initial positions ----------
             function resetFleet() {
                 truckIndices = [2, 4, 6, 8, routePoints.length - 3, routePoints.length - 5, routePoints.length - 7];
                 truckDirections = [1, 1, 1, 1, -1, -1, -1];
                 truckProgress = Array(7).fill(0);
+
                 for (let t = 0; t < totalTrucks; t++) {
-                    const startIdx = truckIndices[t];
-                    const pos = routePoints[startIdx];
-                    const dirStr = truckDirections[t] > 0 ? 'forward' : 'backward';
+                    const idx = truckIndices[t];
+                    const pos = routePoints[idx];
+                    const dir = truckDirections[t] > 0 ? 'forward' : 'backward';
+                    truckMarkers[t].setIcon(createTruckIconWithNumber(vehicleNumbers[t], dir));
                     truckMarkers[t].setLatLng([pos.lat, pos.lng]);
-                    truckMarkers[t].setIcon(createSmallTruckIcon(dirStr));
-                    truckMarkers[t].getTooltip().setContent(`Truck ${t+1} · ${pos.name} (${dirStr})`);
+                    truckMarkers[t].getTooltip()?.setContent(`Truck ${vehicleNumbers[t]} · ${pos.name} (${dir})`);
+
+                    // update card icon color/rotation
+                    const cardIcon = document.getElementById(`iconCard${t}`);
+                    if (cardIcon) {
+                        cardIcon.style.color = dir === 'forward' ? '#fdba74' : '#74b9ff';
+                        cardIcon.style.transform = dir === 'forward' ? 'rotate(0deg)' : 'rotate(180deg)';
+                    }
                     document.getElementById(`truck${t}Street`).innerText = pos.name;
-                    const dir = truckDirections[t];
-                    let remaining = dir > 0 ? (routePoints.length - 1 - startIdx) : startIdx;
-                    const etaVal = Math.max(2, Math.round(remaining * 1.2));
+                    let remaining = (truckDirections[t] > 0) ? (routePoints.length - 1 - idx) : idx;
+                    const etaVal = Math.max(2, Math.round(remaining * 1.3));
                     document.getElementById(`truck${t}Eta`).innerText = `ETA ${etaVal} min`;
-                    const card = document.getElementById(`card${t}`);
-                    card.querySelector('.live-indicator').innerHTML = '<span class="pulse-dot-white"></span> EN ROUTE';
-                    // Set card icon direction and color
-                    const iconElem = card.querySelector('.truck-icon-mini');
-                    iconElem.style.color = dir > 0 ? '#fdba74' : '#74b9ff';
-                    iconElem.style.transform = dir > 0 ? 'rotate(0deg)' : 'rotate(180deg)';
                 }
                 document.getElementById('globalTimestamp').innerText = 'just now';
             }
-            // Simulation button: toggle pause/resume
+
+            // ---------- simulation button toggle ----------
             const btn = document.getElementById('simulateFleetBtn');
-            btn.innerHTML = '<i class="fas fa-truck-fast"></i> Start real-time movement';
             btn.addEventListener('click', function() {
                 if (interval) {
                     clearInterval(interval);
@@ -591,25 +601,24 @@
                     btn.innerHTML = '<i class="fas fa-truck-fast"></i> Pause simulation';
                 }
             });
-            // Initialise
+
+            // ---------- start ----------
             window.onload = function() {
-                initFleetMap();
-                // Set initial card values and ETA based on starting indices
-                resetFleet(); // Use reset to initialize cards
-                // Start automatic simulation after 1.2 sec (web feel)
+                initMap();
+                resetFleet(); // sets cards and markers
+                // auto-start after 1.2 sec
                 setTimeout(() => {
-                    document.getElementById('simulateFleetBtn').click();
+                    if (!interval) {
+                        document.getElementById('simulateFleetBtn').click();
+                    }
                 }, 1200);
             };
-            // Clean up
+
             window.addEventListener('beforeunload', () => {
                 if (interval) clearInterval(interval);
             });
+
         })();
     </script>
-    <!-- small footnote (web) -->
-    <div style="margin-top: 24px; color: #5b7992; font-size: 14px; max-width: 1300px; text-align: left; width: 100%;">
-        <i class="fas fa-map-pin"></i> Seven trucks moving simultaneously (4 forward, 3 opposite) · Real truck emoji in small size · Road with 3-4 sharp curves · Continuous come and go from both sides · Designed for web (desktop/tablet) with map zoom
-    </div>
 </body>
 </html>
