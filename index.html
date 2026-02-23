@@ -135,18 +135,17 @@
             align-items: center;
             gap: 12px;
         }
-        /* truck icon size reduced to HALF of previous (truck-icon-box was 66px, now 34px) */
+        /* truck icon size reduced to HALF of previous (truck-icon-box was 44px, now 22px) */
         .truck-icon-mini {
             background: #13293b;
-            width: 44px; /* roughly half area compared to earlier 66x66 */
-            height: 44px;
-            border-radius: 16px;
+            width: 22px;
+            height: 22px;
+            border-radius: 11px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #fdba74;
-            font-size: 22px; /* icon size reduced */
-            box-shadow: 0 5px 12px rgba(0,35,65,0.3);
+            font-size: 11px;
+            box-shadow: 0 2.5px 6px rgba(0,35,65,0.3);
         }
         .truck-info {
             flex: 1;
@@ -410,11 +409,17 @@
                 { lat: 28.4480, lng: 77.0600, name: 'IFFCO Approach' }, // Curve 2 start
                 { lat: 28.4442, lng: 77.0694, name: 'IFFCO Chowk' },
                 { lat: 28.4400, lng: 77.0780, name: 'Curve Bend 2' }, // Curve 2 bend
+                { lat: 28.4390, lng: 77.0750, name: 'Large Curve 2 South' },
+                { lat: 28.4370, lng: 77.0780, name: 'Large Curve 2 Mid' },
+                { lat: 28.4360, lng: 77.0820, name: 'Large Curve 2 East' },
                 { lat: 28.4364, lng: 77.0860, name: 'Subhash Chowk' },
                 { lat: 28.4330, lng: 77.0800, name: 'Sharp Curve 4' }, // Added sharp curve 4 (west deviation for sharpness)
                 { lat: 28.4300, lng: 77.0950, name: 'Kherki Approach' }, // Curve 3 start
                 { lat: 28.4253, lng: 77.1042, name: 'Kherki Daula toll' },
                 { lat: 28.4200, lng: 77.1200, name: 'Curve Bend 3' }, // Curve 3 bend
+                { lat: 28.4190, lng: 77.1170, name: 'Large Curve 3 West' },
+                { lat: 28.4170, lng: 77.1200, name: 'Large Curve 3 Mid' },
+                { lat: 28.4160, lng: 77.1300, name: 'Large Curve 3 East' },
                 { lat: 28.4170, lng: 77.1357, name: 'Bajghera' },
                 { lat: 28.4120, lng: 77.1550, name: 'Kapashera Approach' },
                 { lat: 28.4103, lng: 77.1704, name: 'Kapashera border' },
@@ -423,7 +428,8 @@
                 { lat: 28.4044, lng: 77.2410, name: 'Surajkund crossing' },
                 { lat: 28.4068, lng: 77.2703, name: 'Neharpar' },
                 { lat: 28.4082, lng: 77.2954, name: 'Sector 34' },
-                { lat: 28.4085, lng: 77.3158, name: 'Sector 37, Faridabad' }
+                { lat: 28.4085, lng: 77.3158, name: 'Sector 37, Faridabad' },
+                { lat: 28.4085, lng: 77.3668, name: '5km Extension End' }
             ];
             // Directions: Trucks 0-3 forward, 4-6 backward initially
             const forwardTrucks = [0, 1, 2, 3];
@@ -438,15 +444,16 @@
             const stepTime = 3200; // ms per segment
             const tickTime = 50; // ms per update for smooth animation
             const stepPerTick = tickTime / stepTime;
-            // Custom small truck icon using real truck emoji (🚚), half size (~38px)
+            // Custom small truck icon using real truck emoji (🚚), half size (~19px)
             function createSmallTruckIcon(direction = 'forward') {
                 const color = direction === 'forward' ? '#fdba74' : '#74b9ff'; // Different color for opposite to distinguish
+                const rotation = direction === 'forward' ? '0' : '180';
                 return L.divIcon({
-                    html: `<div style="background:#13293b; width:38px; height:38px; border-radius: 10px; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 14px rgba(0,30,50,0.6); border:2.5px solid white; color:${color}; font-size:20px;">🚚</div>`,
+                    html: `<div style="background:#13293b; width:19px; height:19px; border-radius: 9px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 7px rgba(0,30,50,0.6); border:1.25px solid white; color:${color}; font-size:10px; transform: rotate(${rotation}deg);">🚚</div>`,
                     className: 'small-truck-marker',
-                    iconSize: [38, 38],
-                    iconAnchor: [19, 19],
-                    popupAnchor: [0, -16]
+                    iconSize: [19, 19],
+                    iconAnchor: [10, 10],
+                    popupAnchor: [0, -10]
                 });
             }
             // Init map
@@ -468,7 +475,7 @@
                 }).addTo(map).bindTooltip('Gurgaon start');
                 L.marker([routePoints[routePoints.length-1].lat, routePoints[routePoints.length-1].lng], {
                     icon: L.divIcon({ html: '<i class="fas fa-flag-checkered" style="color:#e74c3c; font-size:28px;"></i>', iconSize: [28,28] })
-                }).addTo(map).bindTooltip('Faridabad');
+                }).addTo(map).bindTooltip('Faridabad Extension');
                 // Create 7 truck markers (small emoji icon), with initial direction
                 for (let i = 0; i < totalTrucks; i++) {
                     const idx = truckIndices[i];
@@ -499,11 +506,17 @@
                             dir = -1;
                             truckDirections[t] = dir;
                             truckMarkers[t].setIcon(createSmallTruckIcon('backward'));
+                            const iconElem = document.getElementById(`card${t}`).querySelector('.truck-icon-mini');
+                            iconElem.style.color = '#74b9ff';
+                            iconElem.style.transform = 'rotate(180deg)';
                         } else if (startIdx < 0) {
                             startIdx = 0;
                             dir = 1;
                             truckDirections[t] = dir;
                             truckMarkers[t].setIcon(createSmallTruckIcon('forward'));
+                            const iconElem = document.getElementById(`card${t}`).querySelector('.truck-icon-mini');
+                            iconElem.style.color = '#fdba74';
+                            iconElem.style.transform = 'rotate(0deg)';
                         }
                         truckIndices[t] = startIdx;
                     }
@@ -558,6 +571,10 @@
                     document.getElementById(`truck${t}Eta`).innerText = `ETA ${etaVal} min`;
                     const card = document.getElementById(`card${t}`);
                     card.querySelector('.live-indicator').innerHTML = '<span class="pulse-dot-white"></span> EN ROUTE';
+                    // Set card icon direction and color
+                    const iconElem = card.querySelector('.truck-icon-mini');
+                    iconElem.style.color = dir > 0 ? '#fdba74' : '#74b9ff';
+                    iconElem.style.transform = dir > 0 ? 'rotate(0deg)' : 'rotate(180deg)';
                 }
                 document.getElementById('globalTimestamp').innerText = 'just now';
             }
