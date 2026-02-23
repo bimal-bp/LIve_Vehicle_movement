@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>7‑Truck Fleet · Real Time Tracking (web style)</title>
+    <title>7-Truck Fleet · Real Time Tracking (web style)</title>
     <!-- Font Awesome 6 (icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Leaflet (open street map) -->
@@ -140,16 +140,16 @@
         /* truck emoji container — displays the truck number inside */
         .truck-icon-with-number {
             background: #13293b;
-            width: 36px;          /* slightly larger to fit number + emoji clearly */
+            width: 36px; /* slightly larger to fit number + emoji clearly */
             height: 36px;
             border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 17px;       /* emoji size */
+            font-size: 17px; /* emoji size */
             font-weight: 700;
             box-shadow: 0 2.5px 6px rgba(0,35,65,0.3);
-            color: #fdba74;        /* default forward color */
+            color: #fdba74; /* default forward color */
             transition: transform 0.2s ease;
             line-height: 1;
             gap: 2px;
@@ -164,7 +164,6 @@
             border-radius: 10px;
             padding: 0px 4px;
         }
-
         .truck-info {
             flex: 1;
         }
@@ -178,7 +177,7 @@
             color: #4f6f87;
             font-weight: 500;
             margin-top: 2px;
-            display: none;          /* hide original plate, we show inside icon */
+            display: none; /* hide original plate, we show inside icon */
         }
         .live-indicator {
             background: #f97316;
@@ -192,29 +191,6 @@
             gap: 4px;
             width: fit-content;
             margin-top: 10px;
-        }
-        .pulse-dot-white {
-            width: 8px;
-            height: 8px;
-            background: white;
-            border-radius: 50%;
-            position: relative;
-        }
-        .pulse-dot-white::after {
-            content: '';
-            width: 100%;
-            height: 100%;
-            background: rgba(255,255,255,0.5);
-            border-radius: 50%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            animation: pulse 1.8s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            70% { transform: scale(2.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 0; }
         }
         .status-move {
             color: #f97316;
@@ -298,7 +274,7 @@
         <div class="dashboard-header">
             <div class="title-section">
                 <h1><i class="fas fa-truck-fast" style="color:#f97316; margin-right: 12px;"></i>Live fleet · 7 trucks</h1>
-                <p>Real-time position along NH-48 · Gurgaon ↔ Faridabad corridor (opposite directions)</p>
+                <p>Real-time position along the provided road log · Start ↔ End (opposite directions)</p>
             </div>
             <div class="live-badge-global">
                 <i class="fas fa-circle"></i> 7 vehicles active
@@ -316,7 +292,6 @@
                     <span class="stat-chip zoom-hint"><i class="fas fa-search-plus"></i> scroll to zoom map</span>
                 </div>
             </div>
-
             <!-- grid of 7 truck cards, with truck number displayed INSIDE the emoji -->
             <div class="truck-fleet-grid" id="truckCardContainer">
                 <!-- Truck cards will be populated dynamically to sync numbers, but we build static with correct numbers inside .truck-icon-with-number -->
@@ -324,7 +299,6 @@
             </div>
             <!-- we dynamically fill cards using JS to guarantee numbers match vehicle plates. For clarity, we generate cards in JS -->
             <div id="dynamicCardGrid" class="truck-fleet-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));"></div>
-
             <!-- footer + simulation button -->
             <div class="action-bar">
                 <div class="timestamp-footer">
@@ -336,73 +310,52 @@
             </div>
         </div>
     </div>
-
     <div class="footnote">
-        <i class="fas fa-map-pin"></i> Seven trucks moving simultaneously · <strong>Truck number shown inside each emoji</strong> · 4 forward (orange), 3 backward (blue) · Sharp curves on route · Continuous come & go · Full map zoom available (scroll/pinch).
+        <i class="fas fa-map-pin"></i> Seven trucks moving simultaneously · <strong>Truck number shown inside each emoji</strong> · 4 forward (orange), 3 backward (blue) · Continuous come & go · Full map zoom available (scroll/pinch).
     </div>
-
     <script>
         (function() {
             // ------------------ CONFIG ------------------
-            // route with sharp curves (NH-48 style)
+            // route with provided coordinates
             const routePoints = [
-                { lat: 28.4601, lng: 77.0264, name: 'Sector 14, Gurgaon' },
-                { lat: 28.4585, lng: 77.0320, name: 'Rajiv Chowk Curve Start' },
-                { lat: 28.4562, lng: 77.0356, name: 'Rajiv Chowk' },
-                { lat: 28.4520, lng: 77.0420, name: 'Curve Bend 1' },
-                { lat: 28.4505, lng: 77.0512, name: 'Signature Tower' },
-                { lat: 28.4480, lng: 77.0600, name: 'IFFCO Approach' },
-                { lat: 28.4442, lng: 77.0694, name: 'IFFCO Chowk' },
-                { lat: 28.4400, lng: 77.0780, name: 'Curve Bend 2' },
-                { lat: 28.4390, lng: 77.0750, name: 'Large Curve 2 South' },
-                { lat: 28.4370, lng: 77.0780, name: 'Large Curve 2 Mid' },
-                { lat: 28.4360, lng: 77.0820, name: 'Large Curve 2 East' },
-                { lat: 28.4364, lng: 77.0860, name: 'Subhash Chowk' },
-                { lat: 28.4330, lng: 77.0800, name: 'Sharp Curve 4' },
-                { lat: 28.4300, lng: 77.0950, name: 'Kherki Approach' },
-                { lat: 28.4253, lng: 77.1042, name: 'Kherki Daula toll' },
-                { lat: 28.4200, lng: 77.1200, name: 'Curve Bend 3' },
-                { lat: 28.4190, lng: 77.1170, name: 'Large Curve 3 West' },
-                { lat: 28.4170, lng: 77.1200, name: 'Large Curve 3 Mid' },
-                { lat: 28.4160, lng: 77.1300, name: 'Large Curve 3 East' },
-                { lat: 28.4170, lng: 77.1357, name: 'Bajghera' },
-                { lat: 28.4120, lng: 77.1550, name: 'Kapashera Approach' },
-                { lat: 28.4103, lng: 77.1704, name: 'Kapashera border' },
-                { lat: 28.4070, lng: 77.1900, name: 'Shamshan Approach' },
-                { lat: 28.4056, lng: 77.2058, name: 'Shamshan Ghat' },
-                { lat: 28.4044, lng: 77.2410, name: 'Surajkund crossing' },
-                { lat: 28.4068, lng: 77.2703, name: 'Neharpar' },
-                { lat: 28.4082, lng: 77.2954, name: 'Sector 34' },
-                { lat: 28.4085, lng: 77.3158, name: 'Sector 37, Faridabad' },
-                { lat: 28.4085, lng: 77.3668, name: '5km Extension End' }
+                { lat: 17.743812, lng: 83.009988, name: 'Start Point' },
+                { lat: 17.743639, lng: 83.010412, name: 'Point 2' },
+                { lat: 17.744218, lng: 83.012969, name: 'DBL Quarry Approach' },
+                { lat: 17.743480, lng: 83.010670, name: 'DBL Quarry' },
+                { lat: 17.743234, lng: 83.009123, name: 'Point 5' },
+                { lat: 17.742367, lng: 83.010686, name: 'Point 6' },
+                { lat: 17.744333, lng: 83.013113, name: 'Point 7' },
+                { lat: 17.745200, lng: 83.014084, name: 'Point 8' },
+                { lat: 17.746833, lng: 83.015086, name: 'Point 9' },
+                { lat: 17.745691, lng: 83.017468, name: 'Point 10' },
+                { lat: 17.746630, lng: 83.017362, name: 'Point 11' },
+                { lat: 17.748437, lng: 83.018727, name: 'Point 12' },
+                { lat: 17.748538, lng: 83.021473, name: 'Point 13' },
+                { lat: 17.746369, lng: 83.022992, name: 'Point 14' },
+                { lat: 17.743623, lng: 83.022558, name: 'End Point' }
             ];
-
             // Vehicle plates (these are the truck numbers shown inside emoji)
             const vehicleNumbers = ['95', '97', '80', '81', '51', '52', '927'];
             const totalTrucks = 7;
-            const forwardTrucks = [0, 1, 2, 3];    // indices 0-3 forward
-            const backwardTrucks = [4, 5, 6];       // 4-6 backward
-
+            const forwardTrucks = [0, 1, 2, 3]; // indices 0-3 forward
+            const backwardTrucks = [4, 5, 6]; // 4-6 backward
             // initial indices (spread)
             let truckIndices = [2, 4, 6, 8, routePoints.length - 3, routePoints.length - 5, routePoints.length - 7];
             let truckDirections = [1, 1, 1, 1, -1, -1, -1]; // 1 = forward, -1 = backward
             let truckProgress = Array(7).fill(0);
-
             // simulation timing
-            const stepTime = 3200;   // ms per segment
-            const tickTime = 50;      // smooth update
+            const stepTime = 3200; // ms per segment
+            const tickTime = 50; // smooth update
             const stepPerTick = tickTime / stepTime;
-
             let map;
             let interval = null;
             const truckMarkers = [];
-
             // ---------- Helper: create custom icon with truck emoji + number inside ----------
             function createTruckIconWithNumber(plate, direction = 'forward') {
                 const color = direction === 'forward' ? '#fdba74' : '#74b9ff'; // orange / blue
                 const rotation = direction === 'forward' ? '0deg' : '180deg';
                 // emoji plus small plate background
-                const html = `<div style="background:#13293b; width:36px; height:36px; border-radius:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 7px rgba(0,30,50,0.8); border:1.5px solid white; color:${color}; font-size:20px; transform: rotate(${rotation}); gap: 2px; line-height:1;">🚚<span style="font-size:11px; font-weight:800; background:rgba(0,0,0,0.5); color:white; border-radius:12px; padding:1px 5px; margin-left:2px;">${plate}</span></div>`;
+                const html = `<div style="background:#13293b; width:36px; height:36px; border-radius:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 7px rgba(0,30,50,0.8); border:1.5px solid white; color:${color}; font-size:20px; transform: rotate(${rotation}); gap: 2px; line-height:1;">🚚<span style="font-size:11px; font-weight:800; color:white; margin-left:2px;">${plate}</span></div>`;
                 return L.divIcon({
                     html: html,
                     className: 'truck-icon-unit',
@@ -411,7 +364,6 @@
                     popupAnchor: [0, -18]
                 });
             }
-
             // ---------- build truck cards dynamically (so numbers are inside emoji) ----------
             const gridContainer = document.getElementById('dynamicCardGrid');
             function buildTruckCards() {
@@ -430,7 +382,7 @@
                                     <span class="plate">${plate}</span>
                                 </div>
                             </div>
-                            <div class="live-indicator"><span class="pulse-dot-white"></span> EN ROUTE</div>
+                            <div class="live-indicator">EN ROUTE</div>
                             <div class="status-move"><i class="fas fa-location-dot"></i> <span id="truck${i}Street">${routePoints[truckIndices[i]].name}</span></div>
                             <span class="street-badge" id="truck${i}Eta">ETA -- min</span>
                         </div>
@@ -439,7 +391,6 @@
                 gridContainer.innerHTML = htmlStr;
             }
             buildTruckCards();
-
             // ---------- map initialization ----------
             function initMap() {
                 map = L.map('fleetMap', {
@@ -447,12 +398,10 @@
                     scrollWheelZoom: true,
                     doubleClickZoom: true,
                     dragging: true
-                }).setView([28.435, 77.15], 12);
-
+                }).setView([17.745, 83.016], 15);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                     attribution: '© OpenStreetMap, CartoDB'
                 }).addTo(map);
-
                 // background route line
                 L.polyline(routePoints.map(p => [p.lat, p.lng]), {
                     color: '#f97316',
@@ -460,15 +409,13 @@
                     opacity: 0.6,
                     dashArray: '6, 8'
                 }).addTo(map);
-
                 // start/end markers
                 L.marker([routePoints[0].lat, routePoints[0].lng], {
                     icon: L.divIcon({ html: '<i class="fas fa-circle" style="color:#2ecc71; font-size:22px; text-shadow:0 2px 5px black;"></i>', iconSize: [22,22] })
-                }).addTo(map).bindTooltip('Gurgaon start');
+                }).addTo(map).bindTooltip('Start Point');
                 L.marker([routePoints[routePoints.length-1].lat, routePoints[routePoints.length-1].lng], {
                     icon: L.divIcon({ html: '<i class="fas fa-flag-checkered" style="color:#e74c3c; font-size:28px;"></i>', iconSize: [28,28] })
-                }).addTo(map).bindTooltip('Faridabad Extension');
-
+                }).addTo(map).bindTooltip('End Point');
                 // create 7 markers with correct numbers
                 for (let i = 0; i < totalTrucks; i++) {
                     const idx = truckIndices[i];
@@ -480,12 +427,10 @@
                     marker.bindTooltip(`Truck ${vehicleNumbers[i]} · ${pos.name} (${dir})`, { direction: 'top' });
                     truckMarkers.push(marker);
                 }
-
                 // fit bounds to show full corridor with padding
                 const bounds = L.latLngBounds(routePoints.map(p => [p.lat, p.lng]));
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
-
             // ---------- smooth movement and reversal (come & go) ----------
             function moveAllTrucks() {
                 const len = routePoints.length;
@@ -493,11 +438,9 @@
                     let dir = truckDirections[t];
                     let startIdx = truckIndices[t];
                     let prog = truckProgress[t] + stepPerTick;
-
                     if (prog >= 1.0) {
                         prog = 0.0;
                         startIdx += dir;
-
                         // reverse logic at ends
                         if (startIdx >= len - 1 && dir === 1) {
                             startIdx = len - 1;
@@ -525,26 +468,20 @@
                         truckIndices[t] = startIdx;
                     }
                     truckProgress[t] = prog;
-
                     let nextIdx = startIdx + dir;
                     if (nextIdx < 0) nextIdx = 0;
                     if (nextIdx >= len) nextIdx = len - 1;
-
                     const p1 = routePoints[startIdx];
                     const p2 = routePoints[nextIdx];
                     const lat = p1.lat + prog * (p2.lat - p1.lat);
                     const lng = p1.lng + prog * (p2.lng - p1.lng);
-
                     truckMarkers[t].setLatLng([lat, lng]);
-
                     // approximate current street name
                     const currentName = prog < 0.5 ? p1.name : p2.name;
                     truckMarkers[t].getTooltip()?.setContent(`Truck ${vehicleNumbers[t]} · ${currentName} (${dir > 0 ? 'forward' : 'backward'})`);
-
                     // update card street
                     const streetSpan = document.getElementById(`truck${t}Street`);
                     if (streetSpan) streetSpan.innerText = currentName;
-
                     // update ETA (remaining segments * factor)
                     let remaining;
                     if (dir > 0) {
@@ -556,17 +493,14 @@
                     const etaSpan = document.getElementById(`truck${t}Eta`);
                     if (etaSpan) etaSpan.innerText = `ETA ${etaVal} min`;
                 }
-
                 // update timestamp
                 document.getElementById('globalTimestamp').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             }
-
             // ---------- reset to initial positions ----------
             function resetFleet() {
                 truckIndices = [2, 4, 6, 8, routePoints.length - 3, routePoints.length - 5, routePoints.length - 7];
                 truckDirections = [1, 1, 1, 1, -1, -1, -1];
                 truckProgress = Array(7).fill(0);
-
                 for (let t = 0; t < totalTrucks; t++) {
                     const idx = truckIndices[t];
                     const pos = routePoints[idx];
@@ -574,7 +508,6 @@
                     truckMarkers[t].setIcon(createTruckIconWithNumber(vehicleNumbers[t], dir));
                     truckMarkers[t].setLatLng([pos.lat, pos.lng]);
                     truckMarkers[t].getTooltip()?.setContent(`Truck ${vehicleNumbers[t]} · ${pos.name} (${dir})`);
-
                     // update card icon color/rotation
                     const cardIcon = document.getElementById(`iconCard${t}`);
                     if (cardIcon) {
@@ -588,7 +521,6 @@
                 }
                 document.getElementById('globalTimestamp').innerText = 'just now';
             }
-
             // ---------- simulation button toggle ----------
             const btn = document.getElementById('simulateFleetBtn');
             btn.addEventListener('click', function() {
@@ -601,7 +533,6 @@
                     btn.innerHTML = '<i class="fas fa-truck-fast"></i> Pause simulation';
                 }
             });
-
             // ---------- start ----------
             window.onload = function() {
                 initMap();
@@ -613,11 +544,9 @@
                     }
                 }, 1200);
             };
-
             window.addEventListener('beforeunload', () => {
                 if (interval) clearInterval(interval);
             });
-
         })();
     </script>
 </body>
