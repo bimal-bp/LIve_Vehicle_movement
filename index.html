@@ -108,7 +108,7 @@
             gap: 8px;
             margin-bottom: 12px;
         }
-        .truck-badge .truck-emoji-number {
+        .truck-emoji-number {
             background: transparent; /* NO circle background */
             font-size: 28px; /* big truck emoji */
             font-weight: 600;
@@ -242,8 +242,9 @@
     function buildTruckIcon(plate, direction = 'forward') {
         const color = direction === 'forward' ? '#f97316' : '#1976d2'; // orange / blue
         // font-size 30px for truck, number inside as inline span, background transparent
-        // Swapped rotation: forward rotates 180deg to face right (assuming emoji defaults left), backward 0deg to face left
-        const html = `<div style="display:flex; align-items:center; justify-content:center; background:transparent; font-size:30px; line-height:1; gap:0px; color:${color}; font-weight:700; text-shadow:0 2px 4px rgba(0,0,0,0.2); transform:${direction==='forward'?'rotate(180deg)':'rotate(0deg)'};">🚚<span style="font-size:15px; font-weight:800; background:rgba(255,255,240,0.75); padding:2px 6px; border-radius:30px; color:#0b2637; margin-left:2px; border:1px solid ${color}; box-shadow:0 1px 4px rgba(0,0,0,0.2);">${plate}</span></div>`;
+        // Use scaleX(-1) on emoji only for forward to flip direction without mirroring or inverting text
+        const emojiTransform = direction === 'forward' ? 'scaleX(-1)' : 'none';
+        const html = `<div style="display:flex; align-items:center; justify-content:center; background:transparent; font-size:30px; line-height:1; gap:0px; color:${color}; font-weight:700; text-shadow:0 2px 4px rgba(0,0,0,0.2);"><span style="display:inline-block; transform:${emojiTransform};">🚚</span><span style="font-size:15px; font-weight:800; background:rgba(255,255,240,0.75); padding:2px 6px; border-radius:30px; color:#0b2637; margin-left:2px; border:1px solid ${color}; box-shadow:0 1px 4px rgba(0,0,0,0.2);">${plate}</span></div>`;
         return L.divIcon({
             html: html,
             className: 'truck-divicon',
@@ -260,12 +261,12 @@
             const plate = vehicleNumbers[i];
             const dir = truckDirections[i] > 0 ? 'forward' : 'backward';
             const dirClass = dir === 'forward' ? 'dir-forward' : 'dir-backward';
-            // Swapped rotation: forward 180deg, backward 0deg
-            const rotateStyle = dir === 'forward' ? 'transform: rotate(180deg);' : '';
+            // Use scaleX(-1) on emoji only for forward
+            const emojiTransform = dir === 'forward' ? 'transform: scaleX(-1);' : '';
             html += `
             <div class="truck-card" id="card-${i}">
                 <div class="truck-badge">
-                    <span class="truck-emoji-number ${dirClass}" style="${rotateStyle}">🚚<span>${plate}</span></span>
+                    <span class="truck-emoji-number ${dirClass}"><span style="display:inline-block; ${emojiTransform}">🚚</span><span>${plate}</span></span>
                     <span class="driver-name">T${plate}</span>
                 </div>
                 <div class="live-tag"><span class="pulse-dot"></span> en route</div>
@@ -335,7 +336,7 @@
                     const cardSpan = document.querySelector(`#card-${t} .truck-emoji-number`);
                     if (cardSpan) {
                         cardSpan.className = 'truck-emoji-number dir-backward';
-                        cardSpan.style.transform = '';
+                        cardSpan.querySelector('span:first-child').style.transform = '';
                     }
                 } else if (startIdx <= 0 && dir === -1) {
                     startIdx = 0;
@@ -345,7 +346,7 @@
                     const cardSpan = document.querySelector(`#card-${t} .truck-emoji-number`);
                     if (cardSpan) {
                         cardSpan.className = 'truck-emoji-number dir-forward';
-                        cardSpan.style.transform = 'rotate(180deg)';
+                        cardSpan.querySelector('span:first-child').style.transform = 'scaleX(-1)';
                     }
                 }
                 truckIndices[t] = startIdx;
@@ -387,7 +388,7 @@
             const cardSpan = document.querySelector(`#card-${t} .truck-emoji-number`);
             if (cardSpan) {
                 cardSpan.className = `truck-emoji-number ${dir==='forward'?'dir-forward':'dir-backward'}`;
-                cardSpan.style.transform = dir==='forward' ? 'rotate(180deg)' : '';
+                cardSpan.querySelector('span:first-child').style.transform = dir==='forward' ? 'scaleX(-1)' : '';
             }
             document.getElementById(`street-${t}`).innerText = pos.name;
             let rem = (truckDirections[t] > 0) ? (roadPoints.length-1 - idx) : idx;
