@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>7‑truck corridor · scaled icons (30% smaller)</title>
-    <!-- Font Awesome 6 (icons) -->
+    <title>Presently · 12 tippers running · scaled icons (30%)</title>
+    <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -25,6 +25,15 @@
             border-radius: 32px;
             box-shadow: 0 25px 50px rgba(0,20,40,0.25);
             overflow: hidden;
+            transition: all 0.2s;
+        }
+        .fullscreen-mode {
+            max-width: 100%;
+            border-radius: 0;
+            margin: -24px -16px;
+            width: 100vw;
+            height: 100vh;
+            overflow-y: auto;
         }
         .header {
             padding: 18px 28px;
@@ -41,6 +50,11 @@
             color: #0e2b3f;
         }
         .header h1 i { color: #f97316; margin-right: 10px; }
+        .badge-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
         .live-badge {
             background: #dcfce7;
             border-radius: 40px;
@@ -48,6 +62,31 @@
             color: #166534;
             font-weight: 600;
             border: 1px solid #86efac;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .arrow-stats {
+            background: #eef2ff;
+            border-radius: 40px;
+            padding: 6px 22px;
+            color: #1e3a5f;
+            font-weight: 600;
+            border: 1px solid #b9cfec;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .arrow-stats span i { margin-right: 4px; }
+        .up-arrow { color: #f97316; }
+        .down-arrow { color: #1976d2; }
+        .ftd-badge {
+            background: #fff3cd;
+            border: 1px solid #f5c542;
+            border-radius: 40px;
+            padding: 6px 18px;
+            font-weight: 600;
+            color: #8e5f0c;
         }
         #fleetMap {
             width: 100%;
@@ -73,7 +112,17 @@
             color: #1f4d70;
             font-size: 14px;
         }
-        /* grid */
+        .fullscreen-btn {
+            margin-left: auto;
+            background: none;
+            border: 1px solid #a5c0da;
+            border-radius: 30px;
+            padding: 6px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            color: #1f4d70;
+        }
+        .fullscreen-btn:hover { background: #d5e6ff; }
         .truck-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -87,12 +136,10 @@
             box-shadow: 0 4px 10px rgba(0,30,50,0.04);
             border: 1px solid #d6e3f0;
         }
-        /* truck emoji + number – 30% smaller than original (which was ~30px → now ~21px) */
         .truck-badge {
             display: flex;
             align-items: center;
-            justify-content: flex-start;
-            gap: 8px;
+            justify-content: space-between;
             margin-bottom: 10px;
         }
         .truck-emoji-number {
@@ -100,10 +147,10 @@
             align-items: center;
             line-height: 1;
             gap: 2px;
-            font-size: 21px;        /* 30% reduction from 30px ≈ 21px */
+            font-size: 21px;
         }
         .truck-emoji-number span {
-            font-size: 11px;         /* number size reduced accordingly */
+            font-size: 11px;
             font-weight: 800;
             background: rgba(0,35,60,0.1);
             padding: 2px 5px;
@@ -158,18 +205,23 @@
         .btn-sim:hover { background: #def0ff; border-color: #6f99c0; }
         .timestamp { color: #3c6685; font-size: 14px; }
         .footnote { margin-top: 16px; color: #38658a; font-size: 13px; max-width: 1400px; width: 100%; }
-        /* marker icon override for map: we target div with scaled font inside */
-        .truck-divicon {
-            background: transparent !important;
-            border: none !important;
-        }
+        .truck-divicon { background: transparent !important; border: none !important; }
     </style>
 </head>
 <body>
-<div class="dashboard">
+<div class="dashboard" id="dashboard">
     <div class="header">
-        <h1><i class="fas fa-truck"></i> 7‑truck · your 33+ coordinates · icons –30%</h1>
-        <div class="live-badge"><i class="fas fa-circle"></i> 7 active · 30% smaller</div>
+        <h1><i class="fas fa-truck"></i> Presently - 12 tippers running</h1>
+        <div class="badge-group">
+            <div class="live-badge"><i class="fas fa-circle"></i> 12 active · 30% smaller</div>
+            <div class="arrow-stats">
+                <span class="up-arrow"><i class="fas fa-arrow-up"></i> 5</span>
+                <span class="down-arrow"><i class="fas fa-arrow-down"></i> 4</span>
+                <span><i class="fas fa-exchange-alt"></i> 3</span>
+            </div>
+            <div class="ftd-badge"><i class="fas fa-chart-line"></i> FTD trips · 43</div>
+            <button class="fullscreen-btn" id="fullscreenToggle"><i class="fas fa-expand"></i> full window</button>
+        </div>
     </div>
     <div id="fleetMap"></div>
     <div class="panel">
@@ -178,7 +230,7 @@
             <span class="chip"><i class="fas fa-rotate"></i> smooth 15s/segment</span>
             <span class="chip"><i class="fas fa-vector-square"></i> all road points</span>
         </div>
-        <!-- dynamic cards -->
+        <!-- dynamic cards grid -->
         <div id="cardGrid" class="truck-grid"></div>
         <div class="action-bar">
             <div class="timestamp" id="globalTime"><i class="fas fa-sync"></i> updated just now</div>
@@ -187,11 +239,11 @@
     </div>
 </div>
 <div class="footnote">
-    <i class="fas fa-map-pin"></i> Using your full coordinate list (34 points) · cleaned & sequenced · trucks 95,97,80,81,51,52,927 · numbers inside emoji · forward orange / backward blue.
+    <i class="fas fa-map-pin"></i> 12 tippers: 95,97,80,81,51,52,927,926,928,2052,2057,2058 · using all 34 road points · forward orange / backward blue
 </div>
 <script>
 (function() {
-    // ---------- YOUR COMPLETE ROAD COORDINATES (cleaned and ordered) ----------
+    // ---------- FULL ROAD COORDINATES (cleaned) ----------
     const rawCoords = [
         [17.744632, 83.010363],
         [17.744371, 83.010949],
@@ -257,35 +309,38 @@
         [17.741402, 83.022546],
         [17.740813, 83.022399],
         [17.740321, 83.022323],
-        [17.740205, 83.022635]      // last from your list (the 7.740..., but corrected as 17.740205)
+        [17.740205, 83.022635]
     ];
-    // Remove any obvious outlier (the "7.740205" was probably 17.740205, we keep 17.740205)
-    // Ensure all lat > 17.7 – one coordinate had missing "1" → we fix: row "7.740205, 83.022635" becomes 17.740205
-    // Already set above.
     
-    // Build roadPoints array with names
     const roadPoints = rawCoords.map(([lat, lng], idx) => ({
         lat, lng,
         name: idx === 0 ? 'Start' : (idx === rawCoords.length-1 ? 'Final' : `P${idx}`)
     }));
     
-    // vehicle numbers and directions
-    const vehicleNumbers = ['95', '97', '80', '81', '51', '52', '927'];
-    const totalTrucks = 7;
-    // initial indices spread along route
-    let truckIndices = [0, 4, 8, 12, roadPoints.length-8, roadPoints.length-5, roadPoints.length-2];
-    let truckDirections = [1, 1, 1, 1, -1, -1, -1];
-    let truckProgress = Array(7).fill(0);
+    // ----- 12 vehicles (original 7 + 5 new) -----
+    const vehicleNumbers = ['95', '97', '80', '81', '51', '52', '927', '926', '928', '2052', '2057', '2058'];
+    const totalTrucks = 12;
     
-    // simulation timings – slower segment (15 sec) for smooth view
-    const stepInterval = 15000;    // 15 sec per full segment
+    // initial indices spread along route (ensure different positions)
+    let truckIndices = [0, 3, 7, 11, 15, 20, 24, 28, 31, 34, 38, 42];
+    // directions: 1 forward, -1 backward
+    let truckDirections = [1, 1, 1, 1, 1, -1, -1, 1, -1, -1, 1, -1];  // mix
+    let truckProgress = Array(totalTrucks).fill(0);
+    
+    // trip counters (tipper trips) – we store individual completed trips for display
+    let tripCounts = Array(totalTrucks).fill(0).map(() => Math.floor(Math.random()*30)+20); // just for demo FTD total ~43
+    // manually adjust to make FTD around 43
+    tripCounts = [5, 3, 4, 2, 6, 3, 4, 3, 3, 4, 3, 3]; // sum = 43 exactly
+    let totalFtd = tripCounts.reduce((a,b)=>a+b,0);
+    
+    const stepInterval = 15000;    // 15 sec per segment
     const tickMs = 100;
     const stepPerTick = tickMs / stepInterval;
     
     let map, moveInterval = null;
     const markers = [];
     
-    // ----- 30% smaller icon (truck 21px, number 11px) with NO background circle -----
+    // ----- 30% smaller icon (truck 21px) -----
     function buildTruckIcon(plate, direction = 'forward') {
         const color = direction === 'forward' ? '#f97316' : '#1976d2';
         const emojiTransform = direction === 'forward' ? 'scaleX(-1)' : 'none';
@@ -293,13 +348,13 @@
         return L.divIcon({
             html: html,
             className: 'truck-divicon',
-            iconSize: [42, 34],      // fit scaled content
+            iconSize: [42, 34],
             iconAnchor: [21, 17],
             popupAnchor: [0, -15]
         });
     }
     
-    // ----- render cards (also 30% smaller) -----
+    // ----- render cards with trip info (replaces ETA)-----
     const cardGrid = document.getElementById('cardGrid');
     function renderCards() {
         let html = '';
@@ -308,6 +363,7 @@
             const dir = truckDirections[i] > 0 ? 'forward' : 'backward';
             const dirClass = dir === 'forward' ? 'dir-forward' : 'dir-backward';
             const emojiTransform = dir === 'forward' ? 'transform: scaleX(-1);' : '';
+            const tripsDone = tripCounts[i];
             html += `
             <div class="truck-card" id="card-${i}">
                 <div class="truck-badge">
@@ -316,10 +372,12 @@
                 </div>
                 <div class="live-tag"><span class="pulse-dot"></span> en route</div>
                 <div class="status-move"><i class="fas fa-location-dot"></i> <span id="street-${i}">${roadPoints[truckIndices[i]].name}</span></div>
-                <span class="street-name" id="eta-${i}">ETA -- min</span>
+                <span class="street-name" id="trip-${i}">🗺️ trips ${tripsDone}</span>
             </div>`;
         }
         cardGrid.innerHTML = html;
+        // update FTD badge
+        document.querySelector('.ftd-badge').innerHTML = `<i class="fas fa-chart-line"></i> FTD trips · ${totalFtd}`;
     }
     renderCards();
     
@@ -349,7 +407,7 @@
             icon: L.divIcon({ html: '<i class="fas fa-flag-checkered" style="color:#e74c3c; font-size:24px;"></i>', iconSize: [24,24] })
         }).addTo(map).bindTooltip('end');
         
-        // create 7 markers with scaled icons
+        // create 12 markers
         for (let i=0; i<totalTrucks; i++) {
             const idx = truckIndices[i];
             const pos = roadPoints[idx];
@@ -360,7 +418,6 @@
             marker.bindTooltip(`T${vehicleNumbers[i]} · ${pos.name} (${dir})`, { direction: 'top', offset: [0, -18] });
             markers.push(marker);
         }
-        // fit bounds
         const bounds = L.latLngBounds(roadPoints.map(p => [p.lat, p.lng]));
         map.fitBounds(bounds, { padding: [40, 50] });
     }
@@ -382,13 +439,18 @@
                     dir = -1;
                     truckDirections[t] = dir;
                     markers[t].setIcon(buildTruckIcon(vehicleNumbers[t], 'backward'));
-                    // update card direction style
+                    // card direction update
                     const cardSpan = document.querySelector(`#card-${t} .truck-emoji-number`);
                     if (cardSpan) {
                         cardSpan.className = 'truck-emoji-number dir-backward';
                         const firstSpan = cardSpan.querySelector('span:first-child');
                         if (firstSpan) firstSpan.style.transform = '';
                     }
+                    // when turning backward, increment trip (simulate tipper completing one run)
+                    tripCounts[t] += 1;
+                    totalFtd += 1;
+                    document.getElementById(`trip-${t}`).innerText = `🗺️ trips ${tripCounts[t]}`;
+                    document.querySelector('.ftd-badge').innerHTML = `<i class="fas fa-chart-line"></i> FTD trips · ${totalFtd}`;
                 } else if (startIdx <= 0 && dir === -1) {
                     startIdx = 0;
                     dir = 1;
@@ -400,6 +462,11 @@
                         const firstSpan = cardSpan.querySelector('span:first-child');
                         if (firstSpan) firstSpan.style.transform = 'scaleX(-1)';
                     }
+                    // when turning forward, increment trip (arrival at start counts as a trip)
+                    tripCounts[t] += 1;
+                    totalFtd += 1;
+                    document.getElementById(`trip-${t}`).innerText = `🗺️ trips ${tripCounts[t]}`;
+                    document.querySelector('.ftd-badge').innerHTML = `<i class="fas fa-chart-line"></i> FTD trips · ${totalFtd}`;
                 }
                 truckIndices[t] = startIdx;
             }
@@ -415,26 +482,20 @@
             const lng = p1.lng + prog * (p2.lng - p1.lng);
             markers[t].setLatLng([lat, lng]);
             
-            // update street name based on progress
             const currentName = prog < 0.5 ? p1.name : p2.name;
             markers[t].getTooltip()?.setContent(`T${vehicleNumbers[t]} · ${currentName} (${dir>0?'fw':'bw'})`);
             
             const streetSpan = document.getElementById(`street-${t}`);
             if (streetSpan) streetSpan.innerText = currentName;
-            
-            // ETA estimation: remaining segments * 0.9 (approx minutes)
-            let remainingSegments = (dir > 0) ? (len-1 - startIdx) + (1-prog) : startIdx + prog;
-            const etaVal = Math.max(1, Math.round(remainingSegments * 0.9));
-            document.getElementById(`eta-${t}`).innerText = `ETA ${etaVal} min`;
         }
         document.getElementById('globalTime').innerHTML = `<i class="fas fa-clock"></i> ${new Date().toLocaleTimeString()}`;
     }
     
-    // ----- reset to initial spread -----
+    // ----- reset to initial spread (keep trips as is)-----
     function resetPositions() {
-        truckIndices = [0, 5, 10, 15, roadPoints.length-10, roadPoints.length-6, roadPoints.length-3];
-        truckDirections = [1, 1, 1, 1, -1, -1, -1];
-        truckProgress = [0,0,0,0,0,0,0];
+        truckIndices = [0, 3, 7, 11, 15, 20, 24, 28, 31, 34, 38, 42];
+        truckDirections = [1, 1, 1, 1, 1, -1, -1, 1, -1, -1, 1, -1];
+        truckProgress = Array(totalTrucks).fill(0);
         for (let t=0; t<totalTrucks; t++) {
             const idx = truckIndices[t];
             const pos = roadPoints[idx];
@@ -450,10 +511,10 @@
                 if (firstSpan) firstSpan.style.transform = dir==='forward' ? 'scaleX(-1)' : '';
             }
             document.getElementById(`street-${t}`).innerText = pos.name;
-            let rem = (truckDirections[t] > 0) ? (roadPoints.length-1 - idx) : idx;
-            document.getElementById(`eta-${t}`).innerText = `ETA ${Math.max(1, Math.round(rem*0.9))} min`;
+            document.getElementById(`trip-${t}`).innerText = `🗺️ trips ${tripCounts[t]}`;
         }
         document.getElementById('globalTime').innerHTML = `<i class="fas fa-clock"></i> reset at ${new Date().toLocaleTimeString()}`;
+        document.querySelector('.ftd-badge').innerHTML = `<i class="fas fa-chart-line"></i> FTD trips · ${totalFtd}`;
     }
     
     // simulation button
@@ -466,6 +527,20 @@
         } else {
             moveInterval = setInterval(moveAll, tickMs);
             simBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+        }
+    });
+    
+    // full screen toggle
+    const dash = document.getElementById('dashboard');
+    const fsBtn = document.getElementById('fullscreenToggle');
+    fsBtn.addEventListener('click', function() {
+        if (dash.classList.contains('fullscreen-mode')) {
+            dash.classList.remove('fullscreen-mode');
+            fsBtn.innerHTML = '<i class="fas fa-expand"></i> full window';
+        } else {
+            dash.classList.add('fullscreen-mode');
+            fsBtn.innerHTML = '<i class="fas fa-compress"></i> exit full';
+            setTimeout(() => map.invalidateSize(), 100);
         }
     });
     
