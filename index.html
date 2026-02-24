@@ -109,8 +109,8 @@
             margin-bottom: 12px;
         }
         .truck-badge .truck-emoji-number {
-            background: transparent;  /* NO circle background */
-            font-size: 28px;          /* big truck emoji */
+            background: transparent; /* NO circle background */
+            font-size: 28px; /* big truck emoji */
             font-weight: 600;
             display: flex;
             align-items: center;
@@ -130,9 +130,8 @@
             border: 1px solid rgba(249,115,22,0.3);
         }
         /* direction color on truck emoji */
-        .dir-forward { color: #f97316; }  /* orange */
+        .dir-forward { color: #f97316; } /* orange */
         .dir-backward { color: #1976d2; } /* blue */
-
         .driver-name {
             font-weight: 700;
             font-size: 16px;
@@ -192,10 +191,8 @@
             <span class="chip"><i class="fas fa-rotate"></i> refresh 3s</span>
             <span class="chip"><i class="fas fa-search-plus"></i> zoom map</span>
         </div>
-
         <!-- card container (dynamic) -->
         <div id="cardGrid" class="truck-grid"></div>
-
         <div class="action-bar">
             <div class="timestamp" id="globalTime"><i class="fas fa-satellite-dish"></i> last update: just now</div>
             <button class="btn-sim" id="simBtn"><i class="fas fa-play"></i> Start continuous movement</button>
@@ -205,15 +202,14 @@
 <div class="footnote">
     <i class="fas fa-map-pin"></i> Using your 11 road points · 17.743812,83.009988 (start) → 17.743623,83.022558 (last) · Trucks 95,97,80,81,51,52,927 · numbers inside 🚚, no circles. Forward orange / backward blue.
 </div>
-
 <script>
 (function() {
     // ---------- YOUR EXACT ROAD LOG (cleaned, 11 points) ----------
     const roadPoints = [
         { lat: 17.743812, lng: 83.009988, name: 'Start·0' },
         { lat: 17.743639, lng: 83.010412, name: 'Pt1' },
-        { lat: 17.744218, lng: 83.012969, name: 'dbl quarry' },   // dbl quarry from log
-        { lat: 17.743480, lng: 83.010670, name: 'Quarry bend' },  // point after quarry 
+        { lat: 17.744218, lng: 83.012969, name: 'dbl quarry' }, // dbl quarry from log
+        { lat: 17.743480, lng: 83.010670, name: 'Quarry bend' }, // point after quarry
         { lat: 17.743234, lng: 83.009123, name: 'Curve W' },
         { lat: 17.742367, lng: 83.010686, name: 'South leg' },
         { lat: 17.744333, lng: 83.013113, name: 'Curve E' },
@@ -224,34 +220,30 @@
         { lat: 17.748437, lng: 83.018727, name: 'Hill approach' },
         { lat: 17.748538, lng: 83.021473, name: 'Temple' },
         { lat: 17.746369, lng: 83.022992, name: 'Downhill' },
-        { lat: 17.743623, lng: 83.022558, name: 'Final·last' }      // last point you provided
+        { lat: 17.743623, lng: 83.022558, name: 'Final·last' } // last point you provided
     ];
-
     // vehicle numbers (plates) – exactly as required
     const vehicleNumbers = ['95', '97', '80', '81', '51', '52', '927'];
     const totalTrucks = 7;
-    const forwardIndices = [0,1,2,3];   // first four forward
-    const backwardIndices = [4,5,6];     // last three backward
-
+    const forwardIndices = [0,1,2,3]; // first four forward
+    const backwardIndices = [4,5,6]; // last three backward
     // initial positions (spread along route)
     let truckIndices = [0, 2, 4, 6, roadPoints.length-3, roadPoints.length-5, roadPoints.length-7];
     let truckDirections = [1, 1, 1, 1, -1, -1, -1]; // 1 forward / -1 backward
     let truckProgress = Array(7).fill(0);
-
     // simulation timing
-    const stepInterval = 3000;      // 3 sec per segment
-    const tickMs = 45;               // smooth update
+    const stepInterval = 15000; // 15 sec per segment (slowed down)
+    const tickMs = 100; // smooth update (adjusted for slower movement)
     const stepPerTick = tickMs / stepInterval;
-
     let map;
     let moveInterval = null;
     const markers = [];
-
     // ---------- helper: create divIcon with truck emoji + number (NO circle) ----------
     function buildTruckIcon(plate, direction = 'forward') {
-        const color = direction === 'forward' ? '#f97316' : '#1976d2';   // orange / blue
+        const color = direction === 'forward' ? '#f97316' : '#1976d2'; // orange / blue
         // font-size 30px for truck, number inside as inline span, background transparent
-        const html = `<div style="display:flex; align-items:center; justify-content:center; background:transparent; font-size:30px; line-height:1; gap:0px; color:${color}; font-weight:700; text-shadow:0 2px 4px rgba(0,0,0,0.2); transform:${direction==='backward'?'rotate(180deg)':'rotate(0deg)'};">🚚<span style="font-size:15px; font-weight:800; background:rgba(255,255,240,0.75); padding:2px 6px; border-radius:30px; color:#0b2637; margin-left:2px; border:1px solid ${color}; box-shadow:0 1px 4px rgba(0,0,0,0.2);">${plate}</span></div>`;
+        // Swapped rotation: forward rotates 180deg to face right (assuming emoji defaults left), backward 0deg to face left
+        const html = `<div style="display:flex; align-items:center; justify-content:center; background:transparent; font-size:30px; line-height:1; gap:0px; color:${color}; font-weight:700; text-shadow:0 2px 4px rgba(0,0,0,0.2); transform:${direction==='forward'?'rotate(180deg)':'rotate(0deg)'};">🚚<span style="font-size:15px; font-weight:800; background:rgba(255,255,240,0.75); padding:2px 6px; border-radius:30px; color:#0b2637; margin-left:2px; border:1px solid ${color}; box-shadow:0 1px 4px rgba(0,0,0,0.2);">${plate}</span></div>`;
         return L.divIcon({
             html: html,
             className: 'truck-divicon',
@@ -260,7 +252,6 @@
             popupAnchor: [0, -18]
         });
     }
-
     // ---------- build truck cards (with number inside, no circle) ----------
     const cardGrid = document.getElementById('cardGrid');
     function renderCards() {
@@ -269,8 +260,8 @@
             const plate = vehicleNumbers[i];
             const dir = truckDirections[i] > 0 ? 'forward' : 'backward';
             const dirClass = dir === 'forward' ? 'dir-forward' : 'dir-backward';
-            // direction also influences rotation style inline (optional)
-            const rotateStyle = dir === 'backward' ? 'transform: rotate(180deg);' : '';
+            // Swapped rotation: forward 180deg, backward 0deg
+            const rotateStyle = dir === 'forward' ? 'transform: rotate(180deg);' : '';
             html += `
             <div class="truck-card" id="card-${i}">
                 <div class="truck-badge">
@@ -285,7 +276,6 @@
         cardGrid.innerHTML = html;
     }
     renderCards();
-
     // ---------- map init ----------
     function initMap() {
         map = L.map('fleetMap', {
@@ -293,11 +283,9 @@
             scrollWheelZoom: true,
             dragging: true
         }).setView([17.745, 83.015], 15);
-
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '© OpenStreetMap, CartoDB'
         }).addTo(map);
-
         // draw the route (your coordinates)
         L.polyline(roadPoints.map(p => [p.lat, p.lng]), {
             color: '#f97316',
@@ -305,7 +293,6 @@
             opacity: 0.7,
             dashArray: '5,7'
         }).addTo(map);
-
         // start & end markers
         L.marker([roadPoints[0].lat, roadPoints[0].lng], {
             icon: L.divIcon({ html: '<i class="fas fa-play" style="color:#2ecc71; font-size:22px;"></i>', iconSize: [22,22] })
@@ -313,7 +300,6 @@
         L.marker([roadPoints[roadPoints.length-1].lat, roadPoints[roadPoints.length-1].lng], {
             icon: L.divIcon({ html: '<i class="fas fa-flag-checkered" style="color:#e74c3c; font-size:26px;"></i>', iconSize: [26,26] })
         }).addTo(map).bindTooltip('last point');
-
         // create 7 markers
         for (let i=0; i<totalTrucks; i++) {
             const idx = truckIndices[i];
@@ -325,12 +311,10 @@
             marker.bindTooltip(`Truck ${vehicleNumbers[i]} · ${pos.name} (${dir})`, { direction: 'top', offset: [0, -22] });
             markers.push(marker);
         }
-
         // fit bounds
         const bounds = L.latLngBounds(roadPoints.map(p => [p.lat, p.lng]));
         map.fitBounds(bounds, { padding: [50, 60] });
     }
-
     // ---------- smooth tick ----------
     function moveAll() {
         const len = roadPoints.length;
@@ -338,11 +322,9 @@
             let dir = truckDirections[t];
             let startIdx = truckIndices[t];
             let prog = truckProgress[t] + stepPerTick;
-
             if (prog >= 1.0) {
                 prog = 0.0;
                 startIdx += dir;
-
                 // direction reversal at ends
                 if (startIdx >= len-1 && dir === 1) {
                     startIdx = len-1;
@@ -353,7 +335,7 @@
                     const cardSpan = document.querySelector(`#card-${t} .truck-emoji-number`);
                     if (cardSpan) {
                         cardSpan.className = 'truck-emoji-number dir-backward';
-                        cardSpan.style.transform = 'rotate(180deg)';
+                        cardSpan.style.transform = '';
                     }
                 } else if (startIdx <= 0 && dir === -1) {
                     startIdx = 0;
@@ -363,30 +345,25 @@
                     const cardSpan = document.querySelector(`#card-${t} .truck-emoji-number`);
                     if (cardSpan) {
                         cardSpan.className = 'truck-emoji-number dir-forward';
-                        cardSpan.style.transform = 'rotate(0deg)';
+                        cardSpan.style.transform = 'rotate(180deg)';
                     }
                 }
                 truckIndices[t] = startIdx;
             }
             truckProgress[t] = prog;
-
             let nextIdx = startIdx + dir;
             if (nextIdx < 0) nextIdx = 0;
             if (nextIdx >= len) nextIdx = len-1;
-
             const p1 = roadPoints[startIdx];
             const p2 = roadPoints[nextIdx];
             const lat = p1.lat + prog * (p2.lat - p1.lat);
             const lng = p1.lng + prog * (p2.lng - p1.lng);
             markers[t].setLatLng([lat, lng]);
-
             // update street name
             const currentName = prog < 0.5 ? p1.name : p2.name;
             markers[t].getTooltip()?.setContent(`Truck ${vehicleNumbers[t]} · ${currentName} (${dir>0?'forward':'backward'})`);
-
             const streetSpan = document.getElementById(`street-${t}`);
             if (streetSpan) streetSpan.innerText = currentName;
-
             // ETA estimation
             let remainingSegments = (dir > 0) ? (len-1 - startIdx) + (1-prog) : startIdx + prog;
             const etaVal = Math.max(1, Math.round(remainingSegments * 2.1));
@@ -395,13 +372,11 @@
         }
         document.getElementById('globalTime').innerHTML = `<i class="fas fa-satellite-dish"></i> last update: ${new Date().toLocaleTimeString()}`;
     }
-
     // ---------- reset to initial ----------
     function resetPositions() {
         truckIndices = [0, 2, 4, 6, roadPoints.length-3, roadPoints.length-5, roadPoints.length-7];
         truckDirections = [1, 1, 1, 1, -1, -1, -1];
         truckProgress = [0,0,0,0,0,0,0];
-
         for (let t=0; t<totalTrucks; t++) {
             const idx = truckIndices[t];
             const pos = roadPoints[idx];
@@ -409,11 +384,10 @@
             markers[t].setIcon(buildTruckIcon(vehicleNumbers[t], dir));
             markers[t].setLatLng([pos.lat, pos.lng]);
             markers[t].getTooltip()?.setContent(`Truck ${vehicleNumbers[t]} · ${pos.name} (${dir})`);
-
             const cardSpan = document.querySelector(`#card-${t} .truck-emoji-number`);
             if (cardSpan) {
                 cardSpan.className = `truck-emoji-number ${dir==='forward'?'dir-forward':'dir-backward'}`;
-                cardSpan.style.transform = dir==='backward' ? 'rotate(180deg)' : 'rotate(0deg)';
+                cardSpan.style.transform = dir==='forward' ? 'rotate(180deg)' : '';
             }
             document.getElementById(`street-${t}`).innerText = pos.name;
             let rem = (truckDirections[t] > 0) ? (roadPoints.length-1 - idx) : idx;
@@ -421,7 +395,6 @@
         }
         document.getElementById('globalTime').innerHTML = `<i class="fas fa-satellite-dish"></i> last update: just now`;
     }
-
     // ---------- simulation button ----------
     const simBtn = document.getElementById('simBtn');
     simBtn.addEventListener('click', function() {
@@ -434,19 +407,17 @@
             simBtn.innerHTML = '<i class="fas fa-pause"></i> Pause simulation';
         }
     });
-
     // ---------- start ----------
     window.onload = function() {
         initMap();
-        resetPositions();  // set cards and markers
-        // auto-start after 1s
+        resetPositions(); // set cards and markers
+        // auto-start after 1s (kept, but simulation is now slower)
         setTimeout(() => {
             if (!moveInterval) {
                 simBtn.click();
             }
         }, 1000);
     };
-
     window.addEventListener('beforeunload', () => {
         if (moveInterval) clearInterval(moveInterval);
     });
