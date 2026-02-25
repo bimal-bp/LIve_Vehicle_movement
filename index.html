@@ -217,7 +217,7 @@
             <div class="arrow-stats">
                 <span class="up-arrow"><i class="fas fa-arrow-up"></i> 5</span>
                 <span class="down-arrow"><i class="fas fa-arrow-down"></i> 4</span>
-                <span><i class="fas fa-exchange-alt"></i> 3</span>
+                <span></i> 🛑 3</span>
             </div>
             <div class="ftd-badge"><i class="fas fa-chart-line"></i> FTD trips · 43</div>
             <button class="fullscreen-btn" id="fullscreenToggle"><i class="fas fa-expand"></i> full window</button>
@@ -370,8 +370,6 @@
                     <span class="truck-emoji-number ${dirClass}"><span style="display:inline-block; ${emojiTransform}">🚚</span><span>${plate}</span></span>
                     <span class="driver-name">T${plate}</span>
                 </div>
-                <div class="live-tag"><span class="pulse-dot"></span> en route</div>
-                <div class="status-move"><i class="fas fa-location-dot"></i> <span id="street-${i}">${roadPoints[truckIndices[i]].name}</span></div>
                 <span class="street-name" id="trip-${i}">🗺️ trips ${tripsDone}</span>
             </div>`;
         }
